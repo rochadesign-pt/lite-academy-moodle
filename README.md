@@ -50,7 +50,7 @@ Internet ──► Caddy (HTTPS automático) ──► Moodle (Apache + PHP 8.3)
 ## 3. Copiar o kit e preparar o servidor
 
 ```bash
-git clone <URL-DO-REPOSITÓRIO-PRIVADO> /opt/lite-academy-moodle
+git clone https://github.com/rochadesign-pt/lite-academy-moodle.git /opt/lite-academy-moodle
 cd /opt/lite-academy-moodle
 bash scripts/setup-servidor.sh
 ```
