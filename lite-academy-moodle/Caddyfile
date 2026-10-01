@@ -1,0 +1,4 @@
+{$MOODLE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy moodle:80
+}

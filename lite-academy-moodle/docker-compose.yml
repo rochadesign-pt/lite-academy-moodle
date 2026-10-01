@@ -1,0 +1,89 @@
+# Lite Academy — Moodle alojado por nós
+# Serviços: caddy (HTTPS) -> moodle (Apache+PHP) -> postgres + redis; cron corre as tarefas agendadas.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      MOODLE_DOMAIN: ${MOODLE_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - moodle
+
+  moodle:
+    build:
+      context: ./moodle
+      args:
+        MOODLE_VERSION: ${MOODLE_VERSION}
+    image: liteacademy/moodle:${MOODLE_VERSION}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - moodledata:/var/moodledata
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  cron:
+    image: liteacademy/moodle:${MOODLE_VERSION}
+    pull_policy: never
+    restart: unless-stopped
+    env_file: .env
+    user: www-data
+    volumes:
+      - moodledata:/var/moodledata
+    entrypoint: ["sh", "-c"]
+    command: ["while true; do php /var/www/moodle/admin/cli/cron.php; sleep 60; done"]
+    depends_on:
+      - moodle
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    command: >
+      postgres
+      -c shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      -c effective_cache_size=${PG_CACHE_SIZE:-2GB}
+      -c work_mem=8MB
+      -c max_connections=100
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction", "--save", ""]
+
+  # Ferramenta de cópia para o Google Drive (só corre quando chamada pelos scripts)
+  rclone:
+    image: rclone/rclone:latest
+    profiles: ["tools"]
+    volumes:
+      - ./rclone:/config/rclone
+      - ./backups:/backups:ro
+      - ./exportacoes:/exportacoes:ro
+      - moodledata:/moodledata:ro
+
+volumes:
+  moodledata:
+  pgdata:
+  caddy_data:
+  caddy_config:
