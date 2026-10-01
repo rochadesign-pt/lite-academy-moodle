@@ -24,6 +24,15 @@ RUN git clone --depth 1 --branch "${MOODLE_VERSION}" https://github.com/moodle/m
     && rm -rf .git /root/.composer \
     && mkdir -p /var/moodledata && chown www-data:www-data /var/moodledata
 
+# Plugins usados nas disciplinas vindas do MoodleCloud (mesmas versões ou mais recentes)
+RUN set -e; cd /var/www/moodle/public; \
+    add() { git clone --quiet --depth 1 --branch "$2" "https://github.com/$1.git" "$3" && rm -rf "$3/.git"; }; \
+    add danmarsden/moodle-mod_attendance  MOODLE_501_STABLE mod/attendance; \
+    add mdjnelson/moodle-mod_customcert   v5.2.9            mod/customcert; \
+    add davosmith/moodle-checklist        4.1.0.8           mod/checklist; \
+    add davosmith/moodle-block_checklist  4.1.0.1           blocks/checklist; \
+    add davosmith/moodle-grade_checklist  4.1.0.2           grade/export/checklist
+
 COPY config.php /var/www/moodle/config.php
 COPY php.ini /usr/local/etc/php/conf.d/moodle.ini
 COPY apache.conf /etc/apache2/sites-available/000-default.conf
